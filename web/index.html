@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Compromiso Saludable — Panel</title>
+
+  <!-- ethers.js: la librería que nos deja "hablar" con la blockchain desde el navegador -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #0f1420; --card: #1a2030; --accent: #4ade80; --text: #e5e9f0;
+      --muted: #8a93a6; --line: #2a3142;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg); color: var(--text); padding: 32px 16px; line-height: 1.5;
+    }
+    .container { max-width: 880px; margin: 0 auto; }
+    h1 { font-size: 28px; margin-bottom: 4px; }
+    .sub { color: var(--muted); margin-bottom: 20px; font-size: 14px; }
+    .stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+    .stat {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+      padding: 16px 20px; flex: 1; min-width: 160px;
+    }
+    .stat .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+    .stat .value { font-size: 22px; font-weight: 600; margin-top: 4px; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; margin: 20px 0 16px; }
+    button {
+      background: var(--accent); color: #06281a; border: none; border-radius: 10px;
+      padding: 10px 18px; font-weight: 600; cursor: pointer; font-size: 14px;
+    }
+    button:hover { opacity: .9; }
+    button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+    button.sm { padding: 6px 12px; font-size: 13px; }
+    button.red { background: #ef4444; color: #fff; }
+    button.blue { background: #3b82f6; color: #fff; }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+    .panelbox {
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+      padding: 20px; margin-bottom: 16px;
+    }
+    .panelbox h3 { font-size: 15px; margin-bottom: 12px; }
+    .form-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+    .field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 120px; }
+    .field label { font-size: 12px; color: var(--muted); }
+    input {
+      background: #0f1420; border: 1px solid var(--line); border-radius: 8px;
+      padding: 10px; color: var(--text); font-size: 14px;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+      padding: 20px; margin-bottom: 14px;
+    }
+    .card .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .card .meta { font-size: 18px; font-weight: 600; }
+    .card .id { color: var(--muted); font-size: 13px; }
+    .row { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 12px; font-size: 14px; }
+    .row .k { color: var(--muted); font-size: 12px; }
+    .row .v { font-weight: 500; }
+    .acciones { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .badge { padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+    .b-activo    { background: #1e3a5f; color: #7cc4ff; }
+    .b-cumplido  { background: #14532d; color: #6ee7a0; }
+    .b-fallido   { background: #5b1d1d; color: #ff9b9b; }
+    .b-reclamado { background: #3a2f5b; color: #c4b5fd; }
+    .empty { color: var(--muted); text-align: center; padding: 40px; }
+    #status {
+      display: none; padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; font-size: 14px;
+      background: #1e293b; border: 1px solid var(--line);
+    }
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>💪 Compromiso Saludable</h1>
+    <div class="sub">
+      Panel en vivo del contrato en Sepolia ·
+      <a id="scan" target="_blank">ver en Etherscan</a>
+    </div>
+
+    <div id="status"></div>
+
+    <!-- Botón de conexión a MetaMask -->
+    <div class="panelbox">
+      <div class="form-row" style="align-items:center; justify-content:space-between;">
+        <div id="cuentaInfo" style="font-size:14px; color:var(--muted);">No conectado a MetaMask</div>
+        <button id="btnConectar" onclick="conectar()">🦊 Conectar MetaMask</button>
+      </div>
+    </div>
+
+    <!-- Formulario para crear un compromiso (se activa al conectar) -->
+    <div class="panelbox">
+      <h3>➕ Crear un nuevo compromiso</h3>
+      <div class="form-row">
+        <div class="field" style="flex:2;">
+          <label>Meta</label>
+          <input id="inMeta" placeholder="Ej: Correr 3 veces esta semana" />
+        </div>
+        <div class="field">
+          <label>Días de plazo</label>
+          <input id="inDias" type="number" value="7" min="1" />
+        </div>
+        <div class="field">
+          <label>Depósito (ETH)</label>
+          <input id="inDep" type="number" value="0.001" step="0.001" min="0" />
+        </div>
+        <button id="btnCrear" onclick="crear()" disabled>Crear</button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="label">Total compromisos</div><div class="value" id="total">…</div></div>
+      <div class="stat"><div class="label">Pozo solidario</div><div class="value" id="pozo">…</div></div>
+      <div class="stat"><div class="label">Validador (dueño)</div><div class="value" id="owner" style="font-size:14px;">…</div></div>
+    </div>
+
+    <div class="toolbar">
+      <strong>Compromisos</strong>
+      <button class="ghost" onclick="cargar()">🔄 Actualizar</button>
+    </div>
+
+    <div id="lista"></div>
+  </div>
+
+  <script>
+    // ===== Configuración =====
+    const DIRECCION = "0x84D3D28F7f7fC1Ba6C10C1206A51B3E2917bB3aD";
+    const RPC = "https://ethereum-sepolia-rpc.publicnode.com";
+    const SEPOLIA_HEX = "0xaa36a7"; // 11155111 en hexadecimal
+
+    // ABI = lista de funciones del contrato que usamos (lectura + escritura).
+    const ABI = [
+      "function totalCompromisos() view returns (uint256)",
+      "function pozoSolidario() view returns (uint256)",
+      "function owner() view returns (address)",
+      "function obtenerCompromiso(uint256) view returns (address usuario, string meta, uint256 deposito, uint256 plazo, uint8 estado)",
+      "function crearCompromiso(string meta, uint256 duracionDias) payable returns (uint256)",
+      "function validar(uint256 idCompromiso, bool cumplio)",
+      "function reclamar(uint256 idCompromiso)"
+    ];
+
+    const ESTADOS = [
+      { txt: "⏳ Activo",    cls: "b-activo" },
+      { txt: "✅ Cumplido",  cls: "b-cumplido" },
+      { txt: "❌ Fallido",   cls: "b-fallido" },
+      { txt: "💸 Reclamado", cls: "b-reclamado" },
+    ];
+
+    // Proveedor de SOLO LECTURA (funciona sin wallet).
+    const readProvider = new ethers.JsonRpcProvider(RPC);
+    const lector = new ethers.Contract(DIRECCION, ABI, readProvider);
+
+    // Estado de la conexión con MetaMask.
+    let signer = null;
+    let cuenta = null;       // dirección conectada (en minúsculas)
+    let ownerAddr = null;    // dirección del dueño (en minúsculas)
+
+    document.getElementById("scan").href = "https://sepolia.etherscan.io/address/" + DIRECCION;
+
+    function corto(a) { return a.slice(0, 6) + "…" + a.slice(-4); }
+    function fecha(ts) { return new Date(Number(ts) * 1000).toLocaleString("es-CL"); }
+    function aviso(msg, mostrar = true) {
+      const s = document.getElementById("status");
+      s.style.display = mostrar ? "block" : "none";
+      s.textContent = msg;
+    }
+
+    // ===== Conectar MetaMask =====
+    async function conectar() {
+      if (!window.ethereum) { aviso("No se detecta MetaMask. Instalalo en Chrome."); return; }
+      try {
+        const bp = new ethers.BrowserProvider(window.ethereum);
+        await bp.send("eth_requestAccounts", []);
+
+        // Asegurarnos de estar en Sepolia
+        const red = await bp.getNetwork();
+        if (red.chainId !== 11155111n) {
+          aviso("Cambiando tu MetaMask a la red Sepolia…");
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: SEPOLIA_HEX }]
+          });
+        }
+
+        signer = await (new ethers.BrowserProvider(window.ethereum)).getSigner();
+        cuenta = (await signer.getAddress()).toLowerCase();
+        document.getElementById("cuentaInfo").textContent = "Conectado: " + corto(cuenta);
+        document.getElementById("btnConectar").textContent = "✅ Conectado";
+        document.getElementById("btnCrear").disabled = false;
+        aviso("¡MetaMask conectado! Ya podés crear, validar y reclamar.", true);
+        await cargar();
+      } catch (e) {
+        aviso("No se pudo conectar: " + (e.shortMessage || e.message));
+      }
+    }
+
+    // ===== Acción: crear compromiso =====
+    async function crear() {
+      if (!signer) { aviso("Primero conectá MetaMask."); return; }
+      const meta = document.getElementById("inMeta").value.trim();
+      const dias = parseInt(document.getElementById("inDias").value, 10);
+      const dep  = document.getElementById("inDep").value.trim();
+      if (!meta) { aviso("Escribí una meta."); return; }
+      try {
+        aviso("Confirmá la transacción en MetaMask…");
+        const c = new ethers.Contract(DIRECCION, ABI, signer);
+        const tx = await c.crearCompromiso(meta, dias, { value: ethers.parseEther(dep) });
+        aviso("Enviando a la blockchain… (esperando confirmación)");
+        await tx.wait();
+        aviso("✅ ¡Compromiso creado! Actualizando…");
+        document.getElementById("inMeta").value = "";
+        await cargar();
+      } catch (e) {
+        aviso("Error: " + (e.shortMessage || e.message));
+      }
+    }
+
+    // ===== Acción: validar (solo el dueño) =====
+    async function validar(id, cumplio) {
+      if (!signer) { aviso("Primero conectá MetaMask."); return; }
+      try {
+        aviso("Confirmá en MetaMask la validación…");
+        const c = new ethers.Contract(DIRECCION, ABI, signer);
+        const tx = await c.validar(id, cumplio);
+        aviso("Enviando… (esperando confirmación)");
+        await tx.wait();
+        aviso("✅ Validado. Actualizando…");
+        await cargar();
+      } catch (e) {
+        aviso("Error: " + (e.shortMessage || e.message));
+      }
+    }
+
+    // ===== Acción: reclamar (solo el usuario del compromiso) =====
+    async function reclamar(id) {
+      if (!signer) { aviso("Primero conectá MetaMask."); return; }
+      try {
+        aviso("Confirmá en MetaMask el reclamo…");
+        const c = new ethers.Contract(DIRECCION, ABI, signer);
+        const tx = await c.reclamar(id);
+        aviso("Enviando… (esperando confirmación)");
+        await tx.wait();
+        aviso("💸 ¡Depósito reclamado! Actualizando…");
+        await cargar();
+      } catch (e) {
+        aviso("Error: " + (e.shortMessage || e.message));
+      }
+    }
+
+    // ===== Cargar y dibujar todo =====
+    async function cargar() {
+      const lista = document.getElementById("lista");
+      lista.innerHTML = '<div class="empty">Cargando desde la blockchain…</div>';
+      try {
+        const total = await lector.totalCompromisos();
+        const pozo  = await lector.pozoSolidario();
+        const owner = await lector.owner();
+        ownerAddr = owner.toLowerCase();
+        document.getElementById("total").textContent = total.toString();
+        document.getElementById("pozo").textContent  = ethers.formatEther(pozo) + " ETH";
+        document.getElementById("owner").textContent = corto(owner);
+
+        const n = Number(total);
+        if (n === 0) { lista.innerHTML = '<div class="empty">Todavía no hay compromisos. ¡Creá el primero arriba!</div>'; return; }
+
+        let html = "";
+        for (let i = 0; i < n; i++) {
+          const c = await lector.obtenerCompromiso(i);
+          const estadoNum = Number(c.estado);
+          const e = ESTADOS[estadoNum] || { txt: "?", cls: "" };
+          const usuario = c.usuario.toLowerCase();
+
+          // ¿Qué botones mostrar según quién está conectado?
+          let acciones = "";
+          if (cuenta) {
+            // El dueño puede validar un compromiso que está Activo (estado 0)
+            if (cuenta === ownerAddr && estadoNum === 0) {
+              acciones += `<button class="sm" onclick="validar(${i}, true)">✅ Validar cumplido</button>`;
+              acciones += `<button class="sm red" onclick="validar(${i}, false)">❌ Marcar fallido</button>`;
+            }
+            // El usuario puede reclamar si su compromiso está Cumplido (estado 1)
+            if (cuenta === usuario && estadoNum === 1) {
+              acciones += `<button class="sm blue" onclick="reclamar(${i})">💸 Reclamar depósito</button>`;
+            }
+          }
+
+          html += `
+            <div class="card">
+              <div class="top">
+                <div>
+                  <div class="meta">${c.meta}</div>
+                  <div class="id">Compromiso #${i}</div>
+                </div>
+                <span class="badge ${e.cls}">${e.txt}</span>
+              </div>
+              <div class="row">
+                <div><div class="k">Usuario</div><div class="v">${corto(c.usuario)}</div></div>
+                <div><div class="k">Depósito</div><div class="v">${ethers.formatEther(c.deposito)} ETH</div></div>
+                <div><div class="k">Vence</div><div class="v">${fecha(c.plazo)}</div></div>
+              </div>
+              ${acciones ? `<div class="acciones">${acciones}</div>` : ""}
+            </div>`;
+        }
+        lista.innerHTML = html;
+      } catch (err) {
+        lista.innerHTML = '<div class="empty">Error al conectar: ' + err.message + '</div>';
+      }
+    }
+
+    cargar(); // al abrir, muestra el estado actual (sin necesidad de conectar)
+  </script>
+</body>
+</html>
