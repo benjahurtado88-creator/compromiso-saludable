@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Compromiso Saludable — Conectar tu actividad</title>
+  <style>
+    :root { --bg:#0f1420; --card:#1a2030; --accent:#fc5200; --text:#e5e9f0; --muted:#8a93a6; --line:#2a3142; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif; background:var(--bg); color:var(--text); padding:32px 16px; line-height:1.55; }
+    .container { max-width: 760px; margin: 0 auto; }
+    h1 { font-size: 26px; margin-bottom: 6px; }
+    .sub { color: var(--muted); margin-bottom: 24px; font-size: 14px; }
+    a { color: #7cc4ff; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:22px; margin-bottom:16px; }
+    .card h3 { font-size:16px; margin-bottom:10px; }
+    .card p { font-size:14px; color:#cdd3df; margin-bottom:10px; }
+    .btn-strava { background:var(--accent); color:#fff; border:none; border-radius:10px; padding:14px 22px; font-weight:700; font-size:15px; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+    .btn-strava:hover { opacity:.92; }
+    .opt { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); font-size:14px; }
+    .opt:last-child { border-bottom:none; }
+    .opt .ico { font-size:22px; width:28px; text-align:center; }
+    .opt .estado { margin-left:auto; font-size:12px; padding:4px 10px; border-radius:999px; }
+    .ok { background:#14532d; color:#6ee7a0; } .via { background:#1e3a5f; color:#7cc4ff; } .no { background:#3a2f5b; color:#c4b5fd; }
+    #resultado { display:none; background:#14532d22; border:1px solid #14532d; border-radius:12px; padding:18px; margin-bottom:16px; }
+    code { background:#00000050; padding:2px 7px; border-radius:6px; font-size:13px; }
+    pre { background:#00000050; padding:12px; border-radius:8px; overflow:auto; font-size:12.5px; margin-top:8px; }
+    .nota { font-size:12.5px; color:var(--muted); }
+    .volver { display:inline-block; margin-bottom:16px; font-size:14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a class="volver" href="index.html">← Volver al panel</a>
+    <h1>🏃 Conectá tu actividad física</h1>
+    <div class="sub">Al conectar tu cuenta, el cumplimiento de tus metas se verifica <strong>automáticamente con tus datos reales</strong> — sin un validador humano. Más honesto y creíble.</div>
+
+    <!-- Resultado de la autorización (aparece al volver de Strava) -->
+    <div id="resultado"></div>
+
+    <!-- Strava: la opción principal -->
+    <div class="card">
+      <h3>Conectar con Strava</h3>
+      <p>Strava es el <strong>hub universal</strong>: tu Apple Watch, Garmin, Fitbit, etc. ya sincronizan ahí. Conectando Strava, quedan cubiertos todos esos dispositivos.</p>
+      <button class="btn-strava" onclick="conectarStrava()">🟧 Conectar con Strava</button>
+      <p class="nota" style="margin-top:12px;">Te lleva a Strava para que autorices el acceso de <em>solo lectura</em> a tus actividades. Después vuelve acá automáticamente.</p>
+    </div>
+
+    <!-- Otras fuentes -->
+    <div class="card">
+      <h3>Dispositivos y apps soportados</h3>
+      <div class="opt"><span class="ico">⌚</span> <div><strong>Apple Watch</strong><br><span class="nota">Sincroniza a Strava → se conecta vía Strava</span></div> <span class="estado via">vía Strava</span></div>
+      <div class="opt"><span class="ico">🏔️</span> <div><strong>Garmin</strong><br><span class="nota">Sincroniza a Strava, o API directa (con aprobación)</span></div> <span class="estado via">vía Strava</span></div>
+      <div class="opt"><span class="ico">🟧</span> <div><strong>Strava</strong><br><span class="nota">Conexión directa por OAuth</span></div> <span class="estado ok">directo</span></div>
+      <div class="opt"><span class="ico">⌚</span> <div><strong>Fitbit / Google Fit</strong><br><span class="nota">APIs en proceso de cierre (2026)</span></div> <span class="estado no">no recomendado</span></div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:14px;">¿Cómo sigue después de conectar?</h3>
+      <p class="nota">Strava nos devuelve un <strong>código de autorización</strong>. Un servidor (backend) lo canjea por un permiso de lectura, baja tus actividades, y el <strong>verificador</strong> decide si cumpliste la meta → eso llama a <code>validar()</code> en el contrato, sin intervención humana.</p>
+    </div>
+  </div>
+
+  <script>
+    // ===== CONFIGURACIÓN =====
+    // Reemplazá por el Client ID de tu app de Strava (https://www.strava.com/settings/api).
+    // El Client ID es público; el Client SECRET va SOLO en el backend, nunca acá.
+    const STRAVA_CLIENT_ID = "TU_CLIENT_ID";
+    // Strava vuelve a esta misma página con ?code=...
+    const REDIRECT_URI = window.location.origin + "/conectar.html";
+    const SCOPE = "read,activity:read_all";
+
+    function conectarStrava() {
+      if (STRAVA_CLIENT_ID === "TU_CLIENT_ID") {
+        alert("Falta configurar STRAVA_CLIENT_ID en conectar.html.\n\nRegistrá una app gratis en https://www.strava.com/settings/api y pegá el Client ID.");
+        return;
+      }
+      const url = "https://www.strava.com/oauth/authorize"
+        + "?client_id=" + encodeURIComponent(STRAVA_CLIENT_ID)
+        + "&redirect_uri=" + encodeURIComponent(REDIRECT_URI)
+        + "&response_type=code"
+        + "&approval_prompt=auto"
+        + "&scope=" + encodeURIComponent(SCOPE);
+      window.location.href = url; // redirige a Strava
+    }
+
+    // Al volver de Strava, la URL trae ?code=... — lo detectamos y mostramos el siguiente paso.
+    (function detectarCallback() {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+      const scope = params.get("scope");
+      if (!code) return;
+      const box = document.getElementById("resultado");
+      box.style.display = "block";
+      box.innerHTML = `
+        <h3 style="color:#6ee7a0; margin-bottom:8px;">✅ Autorización recibida de Strava</h3>
+        <p style="font-size:14px;">Strava te devolvió un código de autorización. Permisos otorgados: <code>${scope || SCOPE}</code></p>
+        <p style="font-size:14px; margin-top:8px;">Ahora el <strong>backend</strong> canjea este código por un token y baja tus actividades. En tu terminal:</p>
+        <pre>python3 backend/conectar_strava.py "${window.location.href}"</pre>
+        <p class="nota">(El backend tiene el Client Secret; por eso este paso no se hace en el navegador.)</p>`;
+    })();
+  </script>
+</body>
+</html>
