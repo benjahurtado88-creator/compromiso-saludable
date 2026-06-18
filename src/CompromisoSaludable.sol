@@ -2,6 +2,7 @@
 // ^ Licencia del código. Es obligatorio declararla; "MIT" significa de uso libre.
 
 pragma solidity ^0.8.26;
+
 // ^ Versión del lenguaje Solidity. "^0.8.26" = "0.8.26 o superior dentro de la 0.8".
 //   Desde la 0.8 el lenguaje ya protege contra desbordamientos de números (overflow),
 //   así que no necesitamos librerías extra para eso.
@@ -24,21 +25,22 @@ contract CompromisoSaludable {
 
     /// @notice Estados posibles de un compromiso.
     enum Estado {
-        Activo,     // 0: creado, esperando el veredicto del validador
-        Cumplido,   // 1: el validador confirmó que se cumplió
-        Fallido,    // 2: no se cumplió; el depósito pasó al pozo
-        Reclamado   // 3: el usuario ya retiró su depósito (evita doble retiro)
+        Activo, // 0: creado, esperando el veredicto del validador
+        Cumplido, // 1: el validador confirmó que se cumplió
+        Fallido, // 2: no se cumplió; el depósito pasó al pozo
+        Reclamado // 3: el usuario ya retiró su depósito (evita doble retiro)
     }
+
     // Un "enum" es una lista de opciones con nombre. Internamente son números
     // (Activo=0, Cumplido=1, ...), pero usar nombres hace el código legible.
 
     /// @notice La "ficha" de cada compromiso.
     struct Compromiso {
-        address usuario;   // quién creó el compromiso
-        string  meta;      // descripción de la meta (ej: "Correr 3 veces")
-        uint256 deposito;  // cuánto ETH depositó (en wei, la unidad mínima)
-        uint256 plazo;     // fecha límite, como timestamp de Unix (segundos)
-        Estado  estado;    // en qué situación está
+        address usuario; // quién creó el compromiso
+        string meta; // descripción de la meta (ej: "Correr 3 veces")
+        uint256 deposito; // cuánto ETH depositó (en wei, la unidad mínima)
+        uint256 plazo; // fecha límite, como timestamp de Unix (segundos)
+        Estado estado; // en qué situación está
     }
     // Un "struct" agrupa varios datos relacionados bajo un mismo nombre,
     // como una ficha o formulario. "uint256" = número entero positivo grande.
@@ -96,11 +98,7 @@ contract CompromisoSaludable {
     /// @param meta          Descripción de la meta de bienestar.
     /// @param duracionDias  En cuántos días vence el compromiso.
     /// @return id           El número asignado a este compromiso.
-    function crearCompromiso(string calldata meta, uint256 duracionDias)
-        external
-        payable
-        returns (uint256 id)
-    {
+    function crearCompromiso(string calldata meta, uint256 duracionDias) external payable returns (uint256 id) {
         // "payable" = esta función puede recibir ETH junto con la llamada.
         // "external" = se llama desde afuera del contrato.
 
@@ -163,7 +161,7 @@ contract CompromisoSaludable {
         c.estado = Estado.Reclamado;
         uint256 monto = c.deposito;
 
-        (bool exito, ) = payable(msg.sender).call{value: monto}("");
+        (bool exito,) = payable(msg.sender).call{value: monto}("");
         // "call{value: ...}" es la forma recomendada de enviar ETH.
         require(exito, "Fallo el envio del deposito");
 
@@ -180,7 +178,7 @@ contract CompromisoSaludable {
 
         pozoSolidario = 0; // efecto antes de la interacción (patrón seguro)
 
-        (bool exito, ) = payable(destino).call{value: monto}("");
+        (bool exito,) = payable(destino).call{value: monto}("");
         require(exito, "Fallo el envio del pozo");
 
         emit PozoRetirado(destino, monto);

@@ -14,12 +14,12 @@ contract CompromisoSaludableTest is Test {
 
     // Creamos dos "personajes" de prueba con direcciones inventadas.
     address internal validador = address(this); // el que despliega = dueño
-    address internal ana = makeAddr("ana");      // una usuaria de prueba
+    address internal ana = makeAddr("ana"); // una usuaria de prueba
 
     /// @notice setUp() se ejecuta ANTES de cada test, para partir de cero.
     function setUp() public {
         contrato = new CompromisoSaludable(); // lo despliega este contrato de test
-        vm.deal(ana, 10 ether);               // le regalamos 10 ETH de prueba a Ana
+        vm.deal(ana, 10 ether); // le regalamos 10 ETH de prueba a Ana
     }
 
     /// @notice Crear un compromiso debe guardar bien los datos.
@@ -27,13 +27,13 @@ contract CompromisoSaludableTest is Test {
         vm.prank(ana); // la próxima llamada la hace "Ana"
         uint256 id = contrato.crearCompromiso{value: 1 ether}("Meditar 10 dias", 10);
 
-        (address usuario, string memory meta, uint256 deposito, , CompromisoSaludable.Estado estado)
-            = contrato.obtenerCompromiso(id);
+        (address usuario, string memory meta, uint256 deposito,, CompromisoSaludable.Estado estado) =
+            contrato.obtenerCompromiso(id);
 
-        assertEq(usuario, ana);                 // el dueño del compromiso es Ana
-        assertEq(meta, "Meditar 10 dias");      // la meta quedó guardada
-        assertEq(deposito, 1 ether);            // el depósito es 1 ETH
-        assertEq(uint256(estado), 0);           // estado 0 = Activo
+        assertEq(usuario, ana); // el dueño del compromiso es Ana
+        assertEq(meta, "Meditar 10 dias"); // la meta quedó guardada
+        assertEq(deposito, 1 ether); // el depósito es 1 ETH
+        assertEq(uint256(estado), 0); // estado 0 = Activo
         assertEq(contrato.totalCompromisos(), 1);
     }
 
