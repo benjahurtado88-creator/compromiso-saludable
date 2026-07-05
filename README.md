@@ -17,22 +17,21 @@ blockchain, sin intermediarios.
 
 | Carpeta / archivo | Qué es |
 |---|---|
-| `src/CompromisoSaludable.sol` | El contrato inteligente (crear / validar / reclamar / pozo) |
-| `test/CompromisoSaludable.t.sol` | Pruebas automáticas (5/5 ✅) |
+| `src/CompromisoSaludable.sol` | Contrato **V1** (crear / validar / reclamar / pozo) |
+| `src/CompromisoSaludableV2.sol` | Contrato **V2**: desafíos grupales con **reparto del pozo** entre quienes cumplen |
+| `test/` | Pruebas automáticas (**14/14 ✅**: 5 de la V1 + 9 de la V2) |
 | `web/index.html` | dApp: panel + crear/validar/reclamar con MetaMask |
 | `web/conectar.html` | Página para conectar Strava (verificación automática) |
 | `verificador/` | Verificador que decide el cumplimiento con datos reales de Strava |
 | `backend/conectar_strava.py` | Backend que canjea el OAuth de Strava y baja actividades |
-| `docs/INFORME.md` | **Informe del proyecto** (estructura de la rúbrica) |
-| `docs/PRESENTACION.md` | Guion de la presentación |
 | `docs/` | Investigación de verificación, APIs de fitness y registro de despliegue |
 
 ## ▶️ Cómo correrlo
 
 ```bash
 # Requisitos: Foundry (forge, cast) — https://getfoundry.sh
-forge build      # compilar el contrato
-forge test       # correr las pruebas
+forge build      # compilar los contratos
+forge test       # correr las 14 pruebas (V1 + V2)
 
 # Abrir la interfaz web
 python3 -m http.server 8000 --directory web   # luego: http://localhost:8000
@@ -58,4 +57,4 @@ git clone --recurse-submodules https://github.com/benjahurtado88-creator/comprom
 git pull
 ```
 
-> Hecho con la asistencia de Claude Code (declarado en `docs/INFORME.md`, sección 8).
+> Hecho con la asistencia de Claude Code (declarado en el informe del proyecto, sección 8).
